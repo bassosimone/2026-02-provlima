@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bassosimone/2026-02-provlima/internal/humanize"
 	"github.com/bassosimone/2026-02-provlima/internal/infinite"
 	"github.com/bassosimone/runtimex"
 	"github.com/bassosimone/vflag"
@@ -218,10 +219,12 @@ func (sm *sessionManager) handlePutChunk(rw http.ResponseWriter, req *http.Reque
 	read, _ := io.CopyBuffer(io.Discard, bodyReader, buf)
 	elapsed := time.Since(t0)
 
+	speed := float64(read*8) / elapsed.Seconds()
 	slog.Info("PUT chunk done",
 		slog.String("sid", sid),
 		slog.Int64("bytes", read),
 		slog.Duration("elapsed", elapsed),
+		slog.String("speed", humanize.SI(speed, "bit/s")),
 		slog.String("remote", req.RemoteAddr),
 	)
 	rw.WriteHeader(http.StatusNoContent)
