@@ -5,10 +5,24 @@ package slogging
 import (
 	"io"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/bassosimone/2026-02-provlima/internal/humanize"
 )
+
+// Setup configures the default slog logger to write to os.Stdout.
+// When format is "json", it uses slog.NewJSONHandler; otherwise
+// it uses slog.NewTextHandler.
+func Setup(format string) {
+	var handler slog.Handler
+	if format == "json" {
+		handler = slog.NewJSONHandler(os.Stdout, nil)
+	} else {
+		handler = slog.NewTextHandler(os.Stdout, nil)
+	}
+	slog.SetDefault(slog.New(handler))
+}
 
 // interval is the interval between each print
 const interval = 250 * time.Millisecond

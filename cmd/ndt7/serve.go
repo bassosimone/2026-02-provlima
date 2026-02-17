@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/bassosimone/2026-02-provlima/internal/slogging"
 	"github.com/bassosimone/runtimex"
 	"github.com/bassosimone/vflag"
 )
@@ -17,6 +18,7 @@ func serveMain(ctx context.Context, args []string) error {
 	var (
 		addressFlag = "127.0.0.1"
 		certFlag    = "cert.pem"
+		formatFlag  = "text"
 		keyFlag     = "key.pem"
 		portFlag    = "4567"
 	)
@@ -24,10 +26,13 @@ func serveMain(ctx context.Context, args []string) error {
 	fset := vflag.NewFlagSet("ndt7 serve", vflag.ExitOnError)
 	fset.StringVar(&addressFlag, 'A', "address", "Use the given IP `ADDRESS`.")
 	fset.StringVar(&certFlag, 0, "cert", "Use `FILE` as the TLS certificate.")
+	fset.StringVar(&formatFlag, 0, "format", "Use `FORMAT` for log output (text or json).")
 	fset.AutoHelp('h', "help", "Print this help text and exit.")
 	fset.StringVar(&keyFlag, 0, "key", "Use `FILE` as the TLS private key.")
 	fset.StringVar(&portFlag, 'p', "port", "Use the given TCP `PORT`.")
 	runtimex.PanicOnError0(fset.Parse(args))
+
+	slogging.Setup(formatFlag)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ndt/v7/download", func(rw http.ResponseWriter, req *http.Request) {

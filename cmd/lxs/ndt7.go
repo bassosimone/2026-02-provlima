@@ -13,10 +13,12 @@ import (
 
 func serveNDT7Main(ctx context.Context, args []string) error {
 	var (
-		nameFlag = "ocho"
+		formatFlag = "text"
+		nameFlag   = "ocho"
 	)
 
 	fset := vflag.NewFlagSet("lxs serve ndt7", vflag.ExitOnError)
+	fset.StringVar(&formatFlag, 0, "format", "Use `FORMAT` for log output (text or json).")
 	fset.AutoHelp('h', "help", "Print this help text and exit.")
 	fset.StringVar(&nameFlag, 'n', "name", "Use `NAME` to name LXC resources.")
 	runtimex.PanicOnError0(fset.Parse(args))
@@ -39,6 +41,8 @@ func serveNDT7Main(ctx context.Context, args []string) error {
 		"serve",
 		"-A",
 		serverAddr,
+		"--format",
+		formatFlag,
 	}
 	mustRun("%s", shellquote.Join(cmdArgv...))
 
@@ -47,10 +51,12 @@ func serveNDT7Main(ctx context.Context, args []string) error {
 
 func measureNDT7Main(ctx context.Context, args []string) error {
 	var (
-		nameFlag = "ocho"
+		formatFlag = "text"
+		nameFlag   = "ocho"
 	)
 
 	fset := vflag.NewFlagSet("lxs measure ndt7", vflag.ExitOnError)
+	fset.StringVar(&formatFlag, 0, "format", "Use `FORMAT` for log output (text or json).")
 	fset.AutoHelp('h', "help", "Print this help text and exit.")
 	fset.StringVar(&nameFlag, 'n', "name", "Use `NAME` to name LXC resources.")
 	runtimex.PanicOnError0(fset.Parse(args))
@@ -68,6 +74,8 @@ func measureNDT7Main(ctx context.Context, args []string) error {
 		"measure",
 		"-A",
 		serverAddr,
+		"--format",
+		formatFlag,
 	}
 	mustRun("%s", shellquote.Join(cmdArgv...))
 

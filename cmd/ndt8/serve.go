@@ -17,6 +17,7 @@ import (
 
 	"github.com/bassosimone/2026-02-provlima/internal/humanize"
 	"github.com/bassosimone/2026-02-provlima/internal/infinite"
+	"github.com/bassosimone/2026-02-provlima/internal/slogging"
 	"github.com/bassosimone/runtimex"
 	"github.com/bassosimone/vflag"
 	"github.com/google/uuid"
@@ -26,6 +27,7 @@ func serveMain(ctx context.Context, args []string) error {
 	var (
 		addressFlag = "127.0.0.1"
 		certFlag    = "testdata/cert.pem"
+		formatFlag  = "text"
 		keyFlag     = "testdata/key.pem"
 		portFlag    = "4443"
 		staticFlag  = "static"
@@ -34,11 +36,14 @@ func serveMain(ctx context.Context, args []string) error {
 	fset := vflag.NewFlagSet("ndt8 serve", vflag.ExitOnError)
 	fset.StringVar(&addressFlag, 'A', "address", "Use the given IP `ADDRESS`.")
 	fset.StringVar(&certFlag, 0, "cert", "Use `FILE` as the TLS certificate.")
+	fset.StringVar(&formatFlag, 0, "format", "Use `FORMAT` for log output (text or json).")
 	fset.AutoHelp('h', "help", "Print this help text and exit.")
 	fset.StringVar(&keyFlag, 0, "key", "Use `FILE` as the TLS private key.")
 	fset.StringVar(&portFlag, 'p', "port", "Use the given TCP `PORT`.")
 	fset.StringVar(&staticFlag, 's', "static", "Serve static files from `DIR`.")
 	runtimex.PanicOnError0(fset.Parse(args))
+
+	slogging.Setup(formatFlag)
 
 	sm := newSessionManager()
 

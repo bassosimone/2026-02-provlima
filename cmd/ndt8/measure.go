@@ -37,6 +37,7 @@ func measureMain(ctx context.Context, args []string) error {
 	var (
 		addressFlag = "127.0.0.1"
 		certFlag    = "testdata/cert.pem"
+		formatFlag  = "text"
 		http2Flag   = false
 		portFlag    = "4443"
 	)
@@ -44,10 +45,13 @@ func measureMain(ctx context.Context, args []string) error {
 	fset := vflag.NewFlagSet("ndt8 measure", vflag.ExitOnError)
 	fset.StringVar(&addressFlag, 'A', "address", "Use the given IP `ADDRESS`.")
 	fset.StringVar(&certFlag, 0, "cert", "Use `FILE` as the CA certificate.")
+	fset.StringVar(&formatFlag, 0, "format", "Use `FORMAT` for log output (text or json).")
 	fset.AutoHelp('h', "help", "Print this help text and exit.")
 	fset.BoolVar(&http2Flag, '2', "http2", "Force HTTP/2 (default is HTTP/1.1).")
 	fset.StringVar(&portFlag, 'p', "port", "Use the given TCP `PORT`.")
 	runtimex.PanicOnError0(fset.Parse(args))
+
+	slogging.Setup(formatFlag)
 
 	// Load the CA certificate to trust the server's self-signed cert.
 	caCert := runtimex.LogFatalOnError1(os.ReadFile(certFlag))
