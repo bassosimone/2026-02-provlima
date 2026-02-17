@@ -65,9 +65,11 @@ are bloated, probe RTT increases dramatically.
 
 ### Logging
 
-Both client and server emit structured logs (JSON) to stderr. This
-prototype does not implement a result exchange mechanism between
-client and server — each side logs its own observations independently.
+Both client and server emit structured logs to stdout (text format by
+default). Pass `--format json` to any serve or measure subcommand to
+switch to JSON output. This prototype does not implement a result
+exchange mechanism between client and server — each side logs its own
+observations independently.
 
 ## What works well
 
@@ -228,8 +230,138 @@ click "Run Test". You will need to accept the self-signed certificate.
 
 ## Network emulation
 
-*TODO: LXC container setup, netem profiles (2g through ftth-1g, with
-bufferbloat variants), lxs launcher.*
+The `lxs` tool orchestrates LXC containers to run measurements over
+emulated network links. Build it with:
+
+```
+go build -v ./cmd/lxs
+```
+
+### Container topology
+
+`lxs create` sets up three Debian Bookworm containers connected through
+a router:
+
+```
+client (192.168.0.2) ──[left]── router ──[right]── server (192.168.1.2)
+         eth1                 eth1  eth2                eth1
+```
+
+The router has IP forwarding enabled. Traffic shaping (netem + tbf) is
+applied on the router's interfaces, so all traffic between client and
+server passes through the emulated link. Both client and server have
+`iperf3` installed for baseline bandwidth verification.
+
+```
+./lxs create
+```
+
+Use `-n NAME` to change the container name prefix (default: `ocho`).
+
+### Network profiles
+
+`lxs netem apply` configures delay and rate limiting on the router
+using `tc netem` and `tc tbf`. Use `-t TEMPLATE` to select a preset:
+
+| Template | RTT | Download | Upload | TBF latency |
+|----------|-----|----------|--------|-------------|
+| `2g` | 600 ms | 200 kbit/s | 50 kbit/s | 50 ms |
+| `3g` | 200 ms | 3 Mbit/s | 1 Mbit/s | 50 ms |
+| `4g` | 100 ms | 30 Mbit/s | 10 Mbit/s | 50 ms |
+| `5g` | 20 ms | 100 Mbit/s | 30 Mbit/s | 50 ms |
+| `poor-mobile` | 150 ms | 5 Mbit/s | 1 Mbit/s | 50 ms |
+| `broadband` | 50 ms | 100 Mbit/s | 20 Mbit/s | 50 ms |
+| `ftth-100` | 10 ms | 100 Mbit/s | 50 Mbit/s | 50 ms |
+| `ftth-1g` | 10 ms | 1 Gbit/s | 500 Mbit/s | 50 ms |
+| `server` | 2 ms | *(none)* | *(none)* | — |
+
+Every template except `server` also has a `-bloated` variant (e.g.,
+`4g-bloated`) that raises the TBF queue latency to 500 ms–1 s,
+simulating bufferbloat.
+
+```
+./lxs netem apply -t 4g
+./lxs netem apply -t broadband-bloated
+```
+
+Individual parameters can be set (or used to override a template):
+
+```
+./lxs netem apply -t 4g --delay 75ms --tbf-latency 500ms
+./lxs netem apply --delay 25ms --download 50mbit --upload 10mbit
+```
+
+To remove all traffic shaping rules:
+
+```
+./lxs netem clear
+```
+
+### Running measurements
+
+`lxs serve` builds the chosen binary, generates certificates if needed,
+pushes everything into the server container, and starts the server:
+
+```
+./lxs serve ndt8
+./lxs serve ndt7
+```
+
+`lxs measure` builds the client binary, pushes it into the client
+container, and runs a measurement against the server:
+
+```
+./lxs measure ndt8
+./lxs measure ndt7
+```
+
+For ndt8, pass `-2` to force HTTP/2:
+
+```
+./lxs measure ndt8 -2
+```
+
+Use `--format json` on serve or measure subcommands to get JSON log
+output:
+
+```
+./lxs serve ndt8 --format json
+./lxs measure ndt8 --format json
+```
+
+### Baseline verification with iperf3
+
+`lxs iperf` runs `iperf3` from the client to the server, useful for
+verifying that the emulated link matches the expected throughput before
+running protocol measurements:
+
+```
+./lxs iperf              # download (server → client)
+./lxs iperf -R           # upload (client → server)
+./lxs iperf -C bbr       # use BBR congestion control
+./lxs iperf -u           # UDP
+```
+
+### Troubleshooting
+
+**Docker disables packet forwarding.** On Ubuntu 25.10 (and likely
+other distributions), Docker sets the default iptables FORWARD policy
+to DROP. This prevents traffic from flowing between LXC containers
+through the router. If containers cannot reach each other, run:
+
+```
+sudo /sbin/iptables -P FORWARD ACCEPT
+```
+
+This must be re-applied after every Docker daemon restart.
+
+### Cleanup
+
+`lxs destroy` stops and deletes all containers and networks:
+
+```
+./lxs destroy
+```
 
 ## Related work
 
