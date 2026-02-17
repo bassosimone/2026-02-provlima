@@ -8,6 +8,7 @@ require (
 	github.com/bassosimone/vclip v0.0.0-20260213080241-21e4bf81529d
 	github.com/bassosimone/vflag v0.0.0-20260212194245-b765f86a69b9
 	github.com/google/uuid v1.6.0
+	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 )
 
 require (

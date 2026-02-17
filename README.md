@@ -187,7 +187,44 @@ and focused on the protocol design questions above.
 
 ## Setup
 
-*TODO: Build instructions, TLS certificate generation, server startup.*
+Build the two binaries:
+
+```
+go build -v ./cmd/gencert
+go build -v ./cmd/ndt8
+```
+
+Generate a self-signed TLS certificate (reuses existing certs if still
+valid and matching the requested IP):
+
+```
+./gencert --ip-addr 127.0.0.1
+```
+
+This writes `testdata/cert.pem` and `testdata/key.pem`.
+
+Start the server:
+
+```
+./ndt8 serve
+```
+
+By default, the server listens on `127.0.0.1:4443`, serves the API
+endpoints, and serves the browser client from `./static/`. Use
+`./ndt8 serve -h` for options (`-A`, `-p`, `--cert`, `--key`, `-s`).
+
+Run a measurement with the Go client:
+
+```
+./ndt8 measure
+```
+
+This runs download and upload with concurrent probes against the local
+server. Use `./ndt8 measure -h` for options (`-A`, `-p`, `--cert`, `-2`
+for HTTP/2).
+
+Run a measurement from the browser: open `https://127.0.0.1:4443/` and
+click "Run Test". You will need to accept the self-signed certificate.
 
 ## Network emulation
 
