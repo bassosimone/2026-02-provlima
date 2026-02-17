@@ -27,6 +27,7 @@ func serveMain(ctx context.Context, args []string) error {
 		certFlag    = "testdata/cert.pem"
 		keyFlag     = "testdata/key.pem"
 		portFlag    = "4443"
+		staticFlag  = "static"
 	)
 
 	fset := vflag.NewFlagSet("ndt8 serve", vflag.ExitOnError)
@@ -35,6 +36,7 @@ func serveMain(ctx context.Context, args []string) error {
 	fset.AutoHelp('h', "help", "Print this help text and exit.")
 	fset.StringVar(&keyFlag, 0, "key", "Use `FILE` as the TLS private key.")
 	fset.StringVar(&portFlag, 'p', "port", "Use the given TCP `PORT`.")
+	fset.StringVar(&staticFlag, 's', "static", "Serve static files from `DIR`.")
 	runtimex.PanicOnError0(fset.Parse(args))
 
 	sm := newSessionManager()
@@ -45,6 +47,11 @@ func serveMain(ctx context.Context, args []string) error {
 	mux.Handle("PUT /ndt/v8/session/{sid}/chunk/{size}", http.HandlerFunc(sm.handlePutChunk))
 	mux.Handle("GET /ndt/v8/session/{sid}/probe/{pid}", http.HandlerFunc(sm.handleProbe))
 	mux.Handle("DELETE /ndt/v8/session/{sid}", http.HandlerFunc(sm.handleDeleteSession))
+
+	if staticFlag != "" {
+		slog.Info("serving static files", slog.String("dir", staticFlag))
+		mux.Handle("GET /", http.FileServer(http.Dir(staticFlag)))
+	}
 
 	endpoint := net.JoinHostPort(addressFlag, portFlag)
 	srv := &http.Server{

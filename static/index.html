@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ndt8</title>
+<style>
+  body { font-family: monospace; margin: 2em; max-width: 80em; }
+  .result { font-size: 1.5em; margin: 0.5em 0; }
+  #log { white-space: pre-wrap; font-size: 0.85em; color: #555;
+         margin-top: 1em; max-height: 30em; overflow-y: auto;
+         border: 1px solid #ccc; padding: 0.5em; }
+  button { font-family: monospace; font-size: 1em; padding: 0.3em 1em; margin: 0.2em; }
+  button:disabled { opacity: 0.5; }
+  .note { font-size: 0.85em; color: #666; margin-top: 0.5em; }
+</style>
+</head>
+<body>
+<h1>ndt8</h1>
+
+<p class="note">
+  Chunk-doubling from 32 B to 256 MiB, 10 s budget per direction.
+  Download uses XHR+Blob, upload uses Fetch+Blob (best strategies
+  per js-perf benchmarks). Concurrent probes every 250 ms measure
+  RTT under load.
+</p>
+
+<div id="dl-speed" class="result">Download: &mdash;</div>
+<div id="ul-speed" class="result">Upload: &mdash;</div>
+<div id="probe-rtt" class="result">Probe RTT: &mdash;</div>
+
+<button id="run">Run Test</button>
+<button id="clear">Clear Log</button>
+<div id="log"></div>
+
+<script type="module">
+import { NDT8Client } from './ndt8.js';
+
+const dlEl = document.getElementById('dl-speed');
+const ulEl = document.getElementById('ul-speed');
+const probeEl = document.getElementById('probe-rtt');
+const runBtn = document.getElementById('run');
+const logEl = document.getElementById('log');
+
+function formatSpeed(bps) {
+  if (bps >= 1e9) return (bps / 1e9).toFixed(2) + ' Gbit/s';
+  if (bps >= 1e6) return (bps / 1e6).toFixed(2) + ' Mbit/s';
+  if (bps >= 1e3) return (bps / 1e3).toFixed(2) + ' kbit/s';
+  return bps.toFixed(0) + ' bit/s';
+}
+
+function formatBytes(n) {
+  if (n >= 1 << 20) return (n / (1 << 20)).toFixed(1) + ' MiB';
+  if (n >= 1 << 10) return (n / (1 << 10)).toFixed(1) + ' KiB';
+  return n + ' B';
+}
+
+function log(msg) {
+  logEl.textContent += msg + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+document.getElementById('clear').addEventListener('click', () => {
+  logEl.textContent = '';
+});
+
+runBtn.addEventListener('click', async () => {
+  runBtn.disabled = true;
+  dlEl.textContent = 'Download: \u2014';
+  ulEl.textContent = 'Upload: \u2014';
+  probeEl.textContent = 'Probe RTT: \u2014';
+
+  const client = new NDT8Client(location.origin, {
+    onEvent(ev) {
+      switch (ev.type) {
+        case 'session:created':
+          log(`session created: ${ev.sessionID}`);
+          break;
+        case 'download:start':
+          dlEl.textContent = 'Download: running...';
+          log('--- download ---');
+          break;
+        case 'download:progress':
+          dlEl.textContent = `Download: ${formatSpeed(ev.speed)}`;
+          break;
+        case 'download:chunk':
+          dlEl.textContent = `Download: ${formatSpeed(ev.speed)}`;
+          log(`dl chunk ${formatBytes(ev.size)}: ${formatSpeed(ev.speed)} (${(ev.elapsed / 1000).toFixed(2)}s)`);
+          break;
+        case 'download:done':
+          log('download complete');
+          break;
+        case 'upload:start':
+          ulEl.textContent = 'Upload: running...';
+          log('--- upload ---');
+          break;
+        case 'upload:chunk':
+          ulEl.textContent = `Upload: ${formatSpeed(ev.speed)}`;
+          log(`ul chunk ${formatBytes(ev.size)}: ${formatSpeed(ev.speed)} (${(ev.elapsed / 1000).toFixed(2)}s)`);
+          break;
+        case 'upload:done':
+          log('upload complete');
+          break;
+        case 'probe':
+          probeEl.textContent = `Probe RTT: ${ev.rtt.toFixed(1)} ms`;
+          break;
+        case 'session:deleted':
+          log(`session deleted (HTTP ${ev.status})`);
+          break;
+        case 'session:delete-failed':
+          log(`session delete failed: ${ev.error}`);
+          break;
+        case 'download:error':
+        case 'upload:error':
+          log(`${ev.type}: chunk ${formatBytes(ev.size)}: ${ev.error}`);
+          break;
+        case 'complete':
+          log('measurement complete');
+          break;
+      }
+    },
+  });
+
+  try {
+    await client.run();
+  } catch (err) {
+    log(`error: ${err.message}`);
+  } finally {
+    runBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
