@@ -12,9 +12,11 @@ import (
 
 func main() {
 	serveDisp := vclip.NewDispatcherCommand("lxs serve", vflag.ExitOnError)
+	serveDisp.AddCommand("ndt7", vclip.CommandFunc(serveNDT7Main), "Run ndt7 service")
 	serveDisp.AddCommand("ndt8", vclip.CommandFunc(serveNDT8Main), "Run ndt8 service")
 
 	measureDisp := vclip.NewDispatcherCommand("lxs measure", vflag.ExitOnError)
+	measureDisp.AddCommand("ndt7", vclip.CommandFunc(measureNDT7Main), "Measure with ndt7")
 	measureDisp.AddCommand("ndt8", vclip.CommandFunc(measureNDT8Main), "Measure with ndt8")
 
 	disp := vclip.NewDispatcherCommand("lxs", vflag.ExitOnError)
